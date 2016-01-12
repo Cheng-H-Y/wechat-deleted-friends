@@ -48,15 +48,14 @@ ContactList = []
 My = []
 
 try:
-	xrange
 	range = xrange
 except:
 	# python 3
 	pass
 
-def getRequest(url, data=None):
+def getRequest(url, data=None):  #请求url数据
 	try:
-		data = data.encode('utf-8')
+		data = data.encode('utf-8')  #转编码
 	except:
 		pass
 	finally:
@@ -71,20 +70,21 @@ def getUUID():
 		'fun': 'new',
 		'lang': 'zh_CN',
 		'_': int(time.time()),
-	}
+	}  #组装参数
 
 	request = getRequest(url = url, data = urlencode(params))
-	response = wdf_urllib.urlopen(request)
+	response = wdf_urllib.urlopen(request)  #打开url内容
+	# print (response.read())
 	data = response.read().decode('utf-8', 'replace')
 
 	# print(data)
 
 	# window.QRLogin.code = 200; window.QRLogin.uuid = "oZwt_bFfRg==";
-	regx = r'window.QRLogin.code = (\d+); window.QRLogin.uuid = "(\S+?)"'
+	regx = r'window.QRLogin.code = (\d+); window.QRLogin.uuid = "(\S+?)"' #正则取数据
 	pm = re.search(regx, data)
 
-	code = pm.group(1)
-	uuid = pm.group(2)
+	code = pm.group(1) #状态码
+	uuid = pm.group(2) #登录凭证
 
 	if code == '200':
 		return True
@@ -101,14 +101,15 @@ def showQRImage():
 	}
 
 	request = getRequest(url = url, data = urlencode(params))
-	response = wdf_urllib.urlopen(request)
+	response = wdf_urllib.urlopen(request) #登录的二维码网页
 
 	tip = 1
 
 	f = open(QRImagePath, 'wb')
 	f.write(response.read())
-	f.close()
+	f.close() #保存图片
 
+#判断系统并打开图片
 	if sys.platform.find('darwin') >= 0:
 		subprocess.call(['open', QRImagePath])
 	elif sys.platform.find('linux') >= 0:
@@ -146,7 +147,9 @@ def waitForLogin():
 		base_uri = redirect_uri[:redirect_uri.rfind('/')]
 	elif code == '408': #超时
 		pass
-	# elif code == '400' or code == '500':
+	elif code == '400' :#等待扫描中
+		pass
+		#elif code == '500':
 
 	return code
 
@@ -174,7 +177,7 @@ def login():
 	doc = xml.dom.minidom.parseString(data)
 	root = doc.documentElement
 
-	for node in root.childNodes:
+	for node in root.childNodes: #抓取字段
 		if node.nodeName == 'skey':
 			skey = node.childNodes[0].data
 		elif node.nodeName == 'wxsid':
@@ -200,7 +203,7 @@ def login():
 
 	return True
 
-def webwxinit():
+def webwxinit():#初始化
 
 	url = base_uri + '/webwxinit?pass_ticket=%s&skey=%s&r=%s' % (pass_ticket, skey, int(time.time()))
 	params = {
@@ -221,9 +224,9 @@ def webwxinit():
 	# print(data)
 
 	global ContactList, My
-	dic = json.loads(data)
-	ContactList = dic['ContactList']
-	My = dic['User']
+	dic = json.loads(data) #获取json数据
+	ContactList = dic['ContactList']#聊天组
+	My = dic['User']#个人设置
 
 	ErrMsg = dic['BaseResponse']['ErrMsg']
 	if len(ErrMsg) > 0:
@@ -235,7 +238,7 @@ def webwxinit():
 		
 	return True
 
-def webwxgetcontact():
+def webwxgetcontact():#返回通讯录list
 	
 	url = base_uri + '/webwxgetcontact?pass_ticket=%s&skey=%s&r=%s' % (pass_ticket, skey, int(time.time()))
 
@@ -254,7 +257,7 @@ def webwxgetcontact():
 	data = data.decode('utf-8','replace')
 
 	dic = json.loads(data)
-	MemberList = dic['MemberList']
+	MemberList = dic['MemberList']#获取通讯录
 
 	# 倒序遍历,不然删除的时候出问题..
 	SpecialUsers = ["newsapp", "fmessage", "filehelper", "weibo", "qqmail", "tmessage","qmessage", "qqsync", "floatbottle", "lbsapp", "shakeapp","medianote", "qqfriend", "readerapp", "blogapp", "facebookapp","masssendapp", "meishiapp", "feedsapp", "voip", "blogappweixin","weixin", "brandsessionholder", "weixinreminder","wxid_novlwrv3lqwv11", "gh_22b87fa7cb3c", "officialaccounts","notification_messages", "wxitil", "userexperience_alarm"]
@@ -304,6 +307,7 @@ def createChatroom(UserNames):
 	ErrMsg = dic['BaseResponse']['ErrMsg']
 	if len(ErrMsg) > 0:
 		print(ErrMsg)
+
 
 	return ChatRoomName, DeletedList
 
@@ -363,14 +367,14 @@ def addMember(ChatRoomName, UserNames):
 
 def main():
 
-	try:
+	try:    #定义httpt头
 		opener = wdf_urllib.build_opener(wdf_urllib.HTTPCookieProcessor(CookieJar()))
 		wdf_urllib.install_opener(opener)
 	except:
 		pass
 
 	
-	if not getUUID():
+	if not getUUID():		#获取uuid
 		print('获取uuid失败')
 		return
 
@@ -380,7 +384,7 @@ def main():
 	while waitForLogin() != '200':
 		pass
 
-	os.remove(QRImagePath)
+	os.remove(QRImagePath)#删除图片
 
 	if not login():
 		print('登录失败')
@@ -417,9 +421,9 @@ def main():
 		print('[',progress_str,''.join('-'*(10-len(progress_str))),']', end=' ')
 		print('(当前,你被%d人删除,好友共%d人'%(len(result),len(MemberList)),'\r',end=' ')
 
-		# print '第%s组...' % (i + 1)
+		print ('第%s组...' % (i + 1))
 
-		# print ', '.join(NickNames)
+		# print (', '.join(NickNames))
 		# print '回车键继续...'
 		# raw_input()
 
@@ -480,6 +484,7 @@ if __name__ == '__main__' :
 	try:
 		raw_input()
 		input = raw_input
+
 	except:
 		input()
 
