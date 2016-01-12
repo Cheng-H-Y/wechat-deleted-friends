@@ -154,6 +154,7 @@ def waitForLogin():
 	return code
 
 def login():
+<<<<<<< HEAD
 	global skey, wxsid, wxuin, pass_ticket, BaseRequest
 
 	request = getRequest(url = redirect_uri)
@@ -273,6 +274,132 @@ def webwxgetcontact():#返回通讯录list
 			MemberList.remove(Member)
 
 	return MemberList
+=======
+    global skey, wxsid, wxuin, pass_ticket, BaseRequest
+
+    request = getRequest(url=redirect_uri)
+    response = wdf_urllib.urlopen(request)
+    data = response.read().decode('utf-8', 'replace')
+
+    # print(data)
+
+    '''
+        <error>
+            <ret>0</ret>
+            <message>OK</message>
+            <skey>xxx</skey>
+            <wxsid>xxx</wxsid>
+            <wxuin>xxx</wxuin>
+            <pass_ticket>xxx</pass_ticket>
+            <isgrayscale>1</isgrayscale>
+        </error>
+    '''
+
+    doc = xml.dom.minidom.parseString(data)
+    root = doc.documentElement
+
+    for node in root.childNodes:
+        if node.nodeName == 'skey':
+            skey = node.childNodes[0].data
+        elif node.nodeName == 'wxsid':
+            wxsid = node.childNodes[0].data
+        elif node.nodeName == 'wxuin':
+            wxuin = node.childNodes[0].data
+        elif node.nodeName == 'pass_ticket':
+            pass_ticket = node.childNodes[0].data
+
+    # print('skey: %s, wxsid: %s, wxuin: %s, pass_ticket: %s' % (skey, wxsid,
+    # wxuin, pass_ticket))
+
+    if not all((skey, wxsid, wxuin, pass_ticket)):
+        return False
+
+    BaseRequest = {
+        'Uin': int(wxuin),
+        'Sid': wxsid,
+        'Skey': skey,
+        'DeviceID': deviceId,
+    }
+
+    return True
+
+
+def webwxinit():
+
+    url = base_uri + \
+        '/webwxinit?pass_ticket=%s&skey=%s&r=%s' % (
+            pass_ticket, skey, int(time.time()))
+    params = {
+        'BaseRequest': BaseRequest
+    }
+
+    request = getRequest(url=url, data=json.dumps(params))
+    request.add_header('ContentType', 'application/json; charset=UTF-8')
+    response = wdf_urllib.urlopen(request)
+    data = response.read().decode('utf-8', 'replace')
+
+    if DEBUG:
+        f = open(os.path.join(os.getcwd(), 'webwxinit.json'), 'wb')
+        f.write(data)
+        f.close()
+
+    # print(data)
+
+    global ContactList, My
+    dic = json.loads(data)
+    ContactList = dic['ContactList']
+    My = dic['User']
+
+    ErrMsg = dic['BaseResponse']['ErrMsg']
+    if DEBUG:
+        print("Ret: %d, ErrMsg: %s" % (dic['BaseResponse']['Ret'], ErrMsg))
+
+    Ret = dic['BaseResponse']['Ret']
+    if Ret != 0:
+        return False
+
+    return True
+
+
+def webwxgetcontact():
+
+    url = base_uri + \
+        '/webwxgetcontact?pass_ticket=%s&skey=%s&r=%s' % (
+            pass_ticket, skey, int(time.time()))
+
+    request = getRequest(url=url)
+    request.add_header('ContentType', 'application/json; charset=UTF-8')
+    response = wdf_urllib.urlopen(request)
+    data = response.read()
+
+    if DEBUG:
+        f = open(os.path.join(os.getcwd(), 'webwxgetcontact.json'), 'wb')
+        f.write(data)
+        f.close()
+
+    # print(data)
+    data = data.decode('utf-8', 'replace')
+
+    dic = json.loads(data)
+    MemberList = dic['MemberList']
+
+    # 倒序遍历,不然删除的时候出问题..
+    SpecialUsers = ["newsapp", "fmessage", "filehelper", "weibo", "qqmail", "tmessage", "qmessage", "qqsync", "floatbottle", "lbsapp", "shakeapp", "medianote", "qqfriend", "readerapp", "blogapp", "facebookapp", "masssendapp",
+                    "meishiapp", "feedsapp", "voip", "blogappweixin", "weixin", "brandsessionholder", "weixinreminder", "wxid_novlwrv3lqwv11", "gh_22b87fa7cb3c", "officialaccounts", "notification_messages", "wxitil", "userexperience_alarm"]
+    for i in range(len(MemberList) - 1, -1, -1):
+        Member = MemberList[i]
+        if Member['VerifyFlag'] & 8 != 0:  # 公众号/服务号
+            MemberList.remove(Member)
+        elif Member['UserName'] in SpecialUsers:  # 特殊账号
+            MemberList.remove(Member)
+        elif Member['UserName'].find('@@') != -1:  # 群聊
+            MemberList.remove(Member)
+        elif Member['UserName'] == My['UserName']:  # 自己
+            MemberList.remove(Member)
+
+    return MemberList
+
+>>>>>>> parent of e445a77... syncCheck
 
 def createChatroom(UserNames):
 	#MemberList = []
@@ -345,6 +472,7 @@ def addMember(ChatRoomName, UserNames):
 		'AddMemberList': ','.join(UserNames),
 	}
 
+<<<<<<< HEAD
 	request = getRequest(url = url, data = json.dumps(params))
 	request.add_header('ContentType', 'application/json; charset=UTF-8')
 	response = wdf_urllib.urlopen(request)
@@ -459,6 +587,110 @@ def main():
 	resultNames=list(map(lambda x:re.sub(r'<span.+/span>','',x),resultNames))
 	print('\n'.join(resultNames))
 	print('-----------------------------------')
+=======
+def main():
+
+    try:
+    	ssl._create_default_https_context = ssl._create_unverified_context
+    	
+        opener = wdf_urllib.build_opener(
+            wdf_urllib.HTTPCookieProcessor(CookieJar()))
+        wdf_urllib.install_opener(opener)
+    except:
+        pass
+
+    if not getUUID():
+        print('获取uuid失败')
+        return
+
+    showQRImage()
+    time.sleep(1)
+
+    while waitForLogin() != '200':
+        pass
+
+    os.remove(QRImagePath)
+
+    if not login():
+        print('登录失败')
+        return
+
+    if not webwxinit():
+        print('初始化失败')
+        return
+
+    MemberList = webwxgetcontact()
+
+    MemberCount = len(MemberList)
+    print('通讯录共%s位好友' % MemberCount)
+
+    ChatRoomName = ''
+    result = []
+    d = {}
+    for Member in MemberList:
+        d[Member['UserName']] = (Member['NickName'].encode(
+            'utf-8'), Member['RemarkName'].encode('utf-8'))
+    print('开始查找...')
+    group_num = int(math.ceil(MemberCount / float(MAX_GROUP_NUM)))
+    for i in range(0, group_num):
+        UserNames = []
+        for j in range(0, MAX_GROUP_NUM):
+            if i * MAX_GROUP_NUM + j >= MemberCount:
+                break
+            Member = MemberList[i * MAX_GROUP_NUM + j]
+            UserNames.append(Member['UserName'])
+
+        # 新建群组/添加成员
+        if ChatRoomName == '':
+            (ChatRoomName, DeletedList) = createChatroom(UserNames)
+        else:
+            DeletedList = addMember(ChatRoomName, UserNames)
+
+        DeletedCount = len(DeletedList)
+        if DeletedCount > 0:
+            result += DeletedList
+
+        # 删除成员
+        deleteMember(ChatRoomName, UserNames)
+
+        # 进度条
+        progress_len = MAX_PROGRESS_LEN
+        progress = '-' * progress_len
+        progress_str = '%s' % ''.join(
+            map(lambda x: '#', progress[:(progress_len * (i + 1)) / group_num]))
+        print(''.join(
+            ['[', progress_str, ''.join('-' * (progress_len - len(progress_str))), ']']))
+        print('新发现你被%d人删除' % DeletedCount)
+        for i in range(DeletedCount):
+            if d[DeletedList[i]][1] != '':
+                print(d[DeletedList[i]][0] + '(%s)' % d[DeletedList[i]][1])
+            else:
+                print(d[DeletedList[i]][0])
+
+        if i != group_num - 1:
+            print('正在继续查找,请耐心等待...')
+            # 下一次进行接口调用需要等待的时间
+            time.sleep(INTERFACE_CALLING_INTERVAL)
+    # todo 删除群组
+
+    print('\n结果汇总完毕,20s后可重试...')
+    resultNames = []
+    for r in result:
+        if d[r][1] != '':
+            resultNames.append(d[r][0] + '(%s)' % d[r][1])
+        else:
+            resultNames.append(d[r][0])
+
+    print('---------- 被删除的好友列表(共%d人) ----------' % len(result))
+    # 过滤emoji
+    resultNames = map(lambda x: re.sub(r'<span.+/span>', '', x), resultNames)
+    if len(resultNames):
+        print('\n'.join(resultNames))
+    else:
+        print("无")
+    print('---------------------------------------------')
+
+>>>>>>> parent of e445a77... syncCheck
 
 # windows下编码问题修复
 # http://blog.csdn.net/heyuxuanzee/article/details/8442718
