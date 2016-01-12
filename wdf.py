@@ -154,7 +154,6 @@ def waitForLogin():
 	return code
 
 def login():
-<<<<<<< HEAD
 	global skey, wxsid, wxuin, pass_ticket, BaseRequest
 
 	request = getRequest(url = redirect_uri)
@@ -274,8 +273,7 @@ def webwxgetcontact():#返回通讯录list
 			MemberList.remove(Member)
 
 	return MemberList
-=======
-    global skey, wxsid, wxuin, pass_ticket, BaseRequest
+	global skey, wxsid, wxuin, pass_ticket, BaseRequest
 
     request = getRequest(url=redirect_uri)
     response = wdf_urllib.urlopen(request)
